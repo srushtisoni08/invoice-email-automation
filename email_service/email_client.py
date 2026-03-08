@@ -12,7 +12,6 @@ from config import EMAIL_USER, EMAIL_PASS
 
 IMAP_TIMEOUT = 30
 
-
 def check_emails():
 
     print(f"\n[{datetime.now():%H:%M:%S}] Checking inbox")
