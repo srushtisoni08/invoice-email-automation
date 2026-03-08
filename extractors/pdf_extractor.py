@@ -17,13 +17,13 @@ def extract_from_pdf(path: Path) -> dict:
         return default
 
     vendor = find([
-        r"(?:from|vendor|billed?\s*by|company)[:\s]+([A-Za-z0-9 ,\.&'-]{3,50})",
-        r"^([A-Z][A-Za-z0-9 ,\.&'-]{2,40})\n",
+        r"(?:vendor|supplier|company|sold\s*by|billed\s*by|from)[:\s]+([A-Za-z0-9 ,.&'-]{3,80})",
+        r"^([A-Z][A-Za-z0-9 ,.&'-]{3,80})\n",
     ])
 
     invoice_no = find([
-        r"invoice\s*(?:no|number|#)[.:\s]*([A-Z0-9\-/]{3,20})",
-        r"inv[.\s]*#?\s*([A-Z0-9\-/]{3,20})",
+        r"invoice\s*(?:no|number|#|id)[.:\s]*([A-Z0-9\-/]{3,30})",
+        r"inv[.\s]*#?\s*([A-Z0-9\-/]{3,30})",
     ])
 
     invoice_date = find([
@@ -32,18 +32,23 @@ def extract_from_pdf(path: Path) -> dict:
     ])
 
     amount_str = find([
-        r"(?:total\s*amount|grand\s*total|amount\s*due|total\s*due|total)[:\s]*\$?([\d,]+\.?\d{0,2})",
-        r"\$\s*([\d,]+\.\d{2})\s*$",
+    r"(?:grand\s*total|total\s*amount|amount\s*payable|amount\s*due|net\s*amount|total)[:\s₹$]*([\d,]+\.?\d{0,2})",
+    r"[₹$]\s*([\d,]+\.\d{2})",
     ])
     try:
         total = float(amount_str.replace(",", "")) if amount_str else None
     except ValueError:
         total = None
 
-    currency = "USD"
-    if re.search(r"\b€|EUR\b", text):
+    currency = "INR"
+
+    if re.search(r"₹|INR", text):
+        currency = "INR"
+    elif re.search(r"\$", text):
+        currency = "USD"
+    elif re.search(r"€|EUR", text):
         currency = "EUR"
-    elif re.search(r"\b£|GBP\b", text):
+    elif re.search(r"£|GBP", text):
         currency = "GBP"
 
     return {
