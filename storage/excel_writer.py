@@ -4,7 +4,19 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from pathlib import Path
 
 EXCEL_OUTPUT = Path("invoices.xlsx")
-HEADERS = ["Vendor Name", "Invoice Number", "Invoice Date", "Total Amount", "Currency", "Source File", "Processed At"]
+HEADERS = [
+"Vendor Name",
+"Client Name",
+"Invoice Number",
+"Invoice Date",
+"Due Date",
+"GST Number",
+"Total Amount",
+"Due Amount",
+"Currency",
+"Source File",
+"Processed At"
+]
 
 def init_excel():
     """Create invoices.xlsx with headers and formatting if it doesn't exist."""
@@ -49,9 +61,13 @@ def append_to_excel(record: dict):
 
     values = [
         record.get("vendor_name", ""),
+        record.get("client_name", ""),
         record.get("invoice_number", ""),
         record.get("invoice_date", ""),
+        record.get("due_date", ""),
+        record.get("gst_number", ""),
         record.get("total_amount", ""),
+        record.get("due_amount", ""),
         record.get("currency", "USD"),
         record.get("source_file", ""),
         datetime.now().strftime("%Y-%m-%d %H:%M"),
