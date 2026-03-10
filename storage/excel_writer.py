@@ -80,11 +80,14 @@ def append_to_excel(record: dict):
         cell.alignment = Alignment(vertical="center")
 
     # Keep a running total formula in the row below data
-    total_col = 4  # "Total Amount" is column D
-    summary_row = ws.max_row + 2
-    ws.cell(row=summary_row, column=3, value="Grand Total").font = Font(bold=True, name="Arial")
+    # Auto-detect column index from HEADERS so it never breaks if columns are reordered
+    total_col = HEADERS.index("Total Amount") + 1  # 1-based column index
+    total_col_letter = ws.cell(row=1, column=total_col).column_letter
+    data_end_row = ws.max_row  # current last data row
+    summary_row = data_end_row + 2
+    ws.cell(row=summary_row, column=total_col - 1, value="Grand Total").font = Font(bold=True, name="Arial")
     ws.cell(row=summary_row, column=total_col,
-            value=f"=SUM(D2:D{ws.max_row - 1})").font = Font(bold=True, name="Arial")
+            value=f"=SUM({total_col_letter}2:{total_col_letter}{data_end_row})").font = Font(bold=True, name="Arial")
 
     wb.save(EXCEL_OUTPUT)
     print(f"[Excel] Saved invoice → row {next_row}")
