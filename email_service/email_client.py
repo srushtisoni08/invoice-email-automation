@@ -39,7 +39,6 @@ def check_emails():
             subject = decode_mime_str(msg.get("Subject", "(no subject)"))
             print(f"[Email] Subject: {subject}")
 
-            # Mark as SEEN immediately so next loop does not re-process it
             mail.store(eid, "+FLAGS", "\\Seen")
 
             found_attachment = False
@@ -48,7 +47,6 @@ def check_emails():
             for part in msg.walk():
                 content_type = part.get_content_type()
 
-                # get_payload(decode=True) returns None for multipart container parts
                 if content_type == "text/plain" and part.get_content_disposition() != "attachment":
                     try:
                         raw = part.get_payload(decode=True)
@@ -67,19 +65,34 @@ def check_emails():
                     found_attachment = True
 
                     if path.suffix == ".pdf":
-                        data = extract_from_pdf(path)
+                        attachment_data = extract_from_pdf(path)
 
                     elif path.suffix in [".xls", ".xlsx"]:
-                        data = extract_from_excel(path)
+                        attachment_data = extract_from_excel(path)
 
                     else:
                         print(f"[Skip] Unsupported file type: {path.suffix}")
                         continue
 
-                    data["source_file"] = path.name
-                    append_to_excel(data)
+                    # FIX 1: Merge body fields into attachment data for any
+                    # fields the attachment extractor could not find.
+                    # Body text often contains Client Name, GST, Due Date etc.
+                    # that are not inside the PDF/Excel file itself.
+                    if body_text.strip():
+                        body_data = extract_from_body(body_text)
+                        for key, val in body_data.items():
+                            # Only fill in missing/empty fields from body
+                            if not attachment_data.get(key) and val:
+                                attachment_data[key] = val
+                                print(f"[Merge] '{key}' filled from email body")
+
+                    attachment_data["source_file"] = path.name
+                    append_to_excel(attachment_data)
                     print(f"[Done] Invoice saved from attachment: {path.name}")
 
+            # FIX 2: Only fall back to body-only extraction when truly no
+            # supported attachment was found (original logic was correct here,
+            # but now body_text is also used for merging above).
             if not found_attachment:
                 if body_text.strip():
                     data = extract_from_body(body_text)
@@ -97,6 +110,5 @@ def check_emails():
     except imaplib.IMAP4.error as e:
         print(f"[IMAP Error] {e}")
     except Exception as e:
-        # Full traceback so you can see exact file + line number next time
         print(f"[Error] Unexpected error in check_emails: {e}")
         traceback.print_exc()
