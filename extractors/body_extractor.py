@@ -1,15 +1,6 @@
 import re
 
-
 def extract_from_body(text: str) -> dict:
-    """
-    Extract invoice fields from plain-text email body.
-    Handles formats like:
-      Vendor: TechNova Solutions
-      Invoice Number: INV-1024
-      Invoice Date: 05-03-2026
-      Total Amount: $1,250.00
-    """
 
     def find(patterns, default=""):
         for pat in patterns:
@@ -21,8 +12,9 @@ def extract_from_body(text: str) -> dict:
         return default
 
     vendor = find([
-        r"vendor[:\s]+([A-Za-z0-9 ,\.&'-]{3,60})",
-        r"(?:from|company|billed?\s*by)[:\s]+([A-Za-z0-9 ,\.&'-]{3,60})",
+        r"vendor\s*name[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",
+        r"from[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",
+        r"best\s*regards[,:\s]*\n([A-Za-z ]+)",
     ])
 
     invoice_no = find([
@@ -31,9 +23,8 @@ def extract_from_body(text: str) -> dict:
     ])
 
     invoice_date = find([
-        r"invoice\s*date[:\s]+(\d{1,2}[\-/]\d{1,2}[\-/]\d{2,4})",
-        r"date[:\s]+(\d{1,2}[\-/]\d{1,2}[\-/]\d{2,4})",
-        r"date[:\s]+((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4})",
+        r"invoice\s*date[:\s]+(\d{1,2}[\-/]\d{1,2}[\-/]\d{4})",
+        r"invoice\s*date[:\s]+(\d{1,2}\s+[A-Za-z]+\s+\d{4})"
     ])
 
     amount_str = find([
@@ -42,9 +33,38 @@ def extract_from_body(text: str) -> dict:
         r"\$\s*([\d,]+\.\d{2})",
     ])
 
+    client_name = find([
+        r"client\s*name[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",
+        r"bill\s*to[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",
+    ])
+
+    gst_number = find([
+        r"gst\s*(?:no|number)?[:\s]+([0-9A-Z]{15})"
+    ])
+
+    due_date = find([
+        r"due\s*date[:\s]+(\d{1,2}[\-/]\d{1,2}[\-/]\d{4})",
+        r"due\s*date[:\s]+(\d{1,2}\s+[A-Za-z]+\s+\d{4})"
+    ])
+
+    due_amount_str = find([
+        r"due\s*amount[:\s]*₹?([\d,]+\.?\d{0,2})",
+        r"amount\s*due[:\s]*₹?([\d,]+\.?\d{0,2})"
+    ])
+
+    total_str = find([
+        r"total\s*amount[:\s]*₹?([\d,]+\.?\d{0,2})",
+        r"grand\s*total[:\s]*₹?([\d,]+\.?\d{0,2})",
+    ])
+
     try:
-        total = float(amount_str.replace(",", "")) if amount_str and isinstance(amount_str, str) else None
-    except ValueError:
+        due_amount = float(due_amount_str.replace(",", "")) if due_amount_str else None
+    except:
+        due_amount = None
+    
+    try:
+        total = float(total_str.replace(",", "")) if total_str else None
+    except:
         total = None
 
     currency = "USD"
@@ -52,11 +72,19 @@ def extract_from_body(text: str) -> dict:
         currency = "EUR"
     elif re.search(r"\b£|GBP\b", text):
         currency = "GBP"
+    elif re.search(r"₹|INR", text):
+        currency = "INR"
+    
+    text = text.lower()
 
     return {
         "vendor_name": vendor,
+        "client_name": client_name,
         "invoice_number": invoice_no,
         "invoice_date": invoice_date,
+        "due_date": due_date,
+        "gst_number": gst_number,
         "total_amount": total,
+        "due_amount": due_amount,
         "currency": currency,
     }
