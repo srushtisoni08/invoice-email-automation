@@ -1,19 +1,23 @@
 import re
 
 def extract_from_body(text: str) -> dict:
+    clean = re.sub(r"^\s*[\*\-\•]\s*", "", text, flags=re.MULTILINE)
 
     def find(patterns, default=""):
         for pat in patterns:
-            m = re.search(pat, text, re.IGNORECASE | re.MULTILINE)
-            if m:
-                val = m.group(1)
-                if val is not None:
-                    return val.strip()
+            for t in (clean, text):          # try cleaned text first, then raw
+                m = re.search(pat, t, re.IGNORECASE | re.MULTILINE)
+                if m:
+                    val = m.group(1)
+                    if val is not None:
+                        return val.strip()
         return default
 
     vendor = find([
-        r"vendor\s*name[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",
-        r"from[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",
+        r"vendor\s*name\s*[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",   # "Vendor Name: X"
+        r"(?<!\w)vendor\s*[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",   # "Vendor: X"
+        r"supplier\s*(?:name)?\s*[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",
+        r"from\s*[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",
         r"best\s*regards[,:\s]*\n([A-Za-z ]+)",
     ])
 
@@ -29,9 +33,9 @@ def extract_from_body(text: str) -> dict:
     ])
 
     client_name = find([
-        r"client\s*(?:name)?[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",
-        r"bill(?:ed)?\s*to[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",
-        r"bill(?:ed)?\s*to[:\s]*\n([A-Za-z0-9 ,.'&-]{3,60})",
+        r"client\s*(?:name)?\s*[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",
+        r"bill(?:ed)?\s*to\s*[:\s]+([A-Za-z0-9 ,.'&-]{3,60})",
+        r"bill(?:ed)?\s*to\s*[:\s]*\n([A-Za-z0-9 ,.'&-]{3,60})",
     ])
 
     gst_number = find([
@@ -47,9 +51,9 @@ def extract_from_body(text: str) -> dict:
     ])
 
     due_amount_str = find([
-        r"due\s*amount[:\s]*(?:₹|Rs\.?|INR)?\s*([\d,]+\.?\d{0,2})",
-        r"amount\s*due[:\s]*(?:₹|Rs\.?|INR)?\s*([\d,]+\.?\d{0,2})",
-        r"balance\s*due[:\s]*(?:₹|Rs\.?|INR)?\s*([\d,]+\.?\d{0,2})",
+        r"due\s*amount[:\s]*(?:₹|Rs\.?|INR|\$)?\s*([\d,]+\.?\d{0,2})",
+        r"amount\s*due[:\s]*(?:₹|Rs\.?|INR|\$)?\s*([\d,]+\.?\d{0,2})",
+        r"balance\s*due[:\s]*(?:₹|Rs\.?|INR|\$)?\s*([\d,]+\.?\d{0,2})",
     ])
 
     total_str = find([
@@ -71,23 +75,19 @@ def extract_from_body(text: str) -> dict:
         total = None
 
     currency = "INR"
-    if re.search(r"\b€|EUR\b", text):
-        currency = "EUR"
-    elif re.search(r"\b£|GBP\b", text):
-        currency = "GBP"
-    elif re.search(r"\$|USD", text):
-        currency = "USD"
-    elif re.search(r"₹|INR|Rs\.", text):
-        currency = "INR"
+    if re.search(r"\b€|EUR\b", text):   currency = "EUR"
+    elif re.search(r"\b£|GBP\b", text): currency = "GBP"
+    elif re.search(r"\$|USD", text):    currency = "USD"
+    elif re.search(r"₹|INR|Rs\.", text): currency = "INR"
 
     return {
-        "vendor_name": vendor,
-        "client_name": client_name,
+        "vendor_name":    vendor,
+        "client_name":    client_name,
         "invoice_number": invoice_no,
-        "invoice_date": invoice_date,
-        "due_date": due_date,
-        "gst_number": gst_number,
-        "total_amount": total,
-        "due_amount": due_amount,
-        "currency": currency,
+        "invoice_date":   invoice_date,
+        "due_date":       due_date,
+        "gst_number":     gst_number,
+        "total_amount":   total,
+        "due_amount":     due_amount,
+        "currency":       currency,
     }
