@@ -4,7 +4,7 @@ import traceback
 from datetime import datetime
 from .attachment_handler import save_attachment
 from extractors.pdf_extractor import extract_from_pdf
-from extractors.excel_extractor import extract_from_excel
+from extractors.excel_extractor import extract_from_excel, extract_all_from_excel
 from extractors.body_extractor import extract_from_body
 from storage.excel_writer import append_to_excel
 from utils.helpers import decode_mime_str
@@ -67,28 +67,34 @@ def check_emails():
                     if path.suffix == ".pdf":
                         attachment_data = extract_from_pdf(path)
 
+                        # FIX 1 merge (body → attachment) for PDF
+                        if body_text.strip():
+                            body_data = extract_from_body(body_text)
+                            for key, val in body_data.items():
+                                if not attachment_data.get(key) and val:
+                                    attachment_data[key] = val
+                                    print(f"[Merge] '{key}' filled from email body")
+
+                        attachment_data["source_file"] = path.name
+                        append_to_excel(attachment_data)
+                        print(f"[Done] Invoice saved from attachment: {path.name}")
+
                     elif path.suffix in [".xls", ".xlsx"]:
-                        attachment_data = extract_from_excel(path)
+                        all_records = extract_all_from_excel(path)
+                        print(f"[Excel] Found {len(all_records)} invoice(s) in {path.name}")
 
-                    else:
-                        print(f"[Skip] Unsupported file type: {path.suffix}")
-                        continue
+                        for attachment_data in all_records:
+                            if body_text.strip():
+                                body_data = extract_from_body(body_text)
+                                for key, val in body_data.items():
+                                    if not attachment_data.get(key) and val:
+                                        attachment_data[key] = val
+                                        print(f"[Merge] '{key}' filled from email body")
 
-                    # FIX 1: Merge body fields into attachment data for any
-                    # fields the attachment extractor could not find.
-                    # Body text often contains Client Name, GST, Due Date etc.
-                    # that are not inside the PDF/Excel file itself.
-                    if body_text.strip():
-                        body_data = extract_from_body(body_text)
-                        for key, val in body_data.items():
-                            # Only fill in missing/empty fields from body
-                            if not attachment_data.get(key) and val:
-                                attachment_data[key] = val
-                                print(f"[Merge] '{key}' filled from email body")
+                            attachment_data["source_file"] = path.name
+                            append_to_excel(attachment_data)
 
-                    attachment_data["source_file"] = path.name
-                    append_to_excel(attachment_data)
-                    print(f"[Done] Invoice saved from attachment: {path.name}")
+                        print(f"[Done] {len(all_records)} invoice(s) saved from: {path.name}")
 
             # FIX 2: Only fall back to body-only extraction when truly no
             # supported attachment was found (original logic was correct here,
