@@ -38,20 +38,17 @@ def extract_from_pdf(path: Path) -> dict:
         r"bill(?:ed)?\s*to\s*:\s*([A-Za-z0-9 ,.&'()-]{3,80})",
     ])
 
-    # ── Invoice Number ────────────────────────────────────────────────────────
     invoice_no = find([
         r"invoice\s*(?:no|number|#|id)[.:\s]*([A-Z0-9\-/]{3,30})",
         r"inv[.\s]*#?\s*([A-Z0-9\-/]{3,30})",
     ])
 
-    # ── Invoice Date ──────────────────────────────────────────────────────────
     invoice_date = find([
         r"invoice\s*date\s*:\s*(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})",
         r"invoice\s*date\s*:\s*(\d{1,2}\s+[A-Za-z]+\s+\d{4})",
         r"invoice\s*date\s*:\s*((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4})",
     ])
 
-    # ── Due Date ──────────────────────────────────────────────────────────────
     due_date = find([
         r"due\s*date\s*:\s*(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})",
         r"due\s*date\s*:\s*(\d{1,2}\s+[A-Za-z]+\s+\d{4})",
@@ -59,20 +56,17 @@ def extract_from_pdf(path: Path) -> dict:
         r"payment\s*due\s*:\s*(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})",
     ])
 
-    # ── GST Number ────────────────────────────────────────────────────────────
     gst_number = find([
         r"(?:GSTIN|GST\s*No\.?|GST\s*Number)\s*:\s*([0-9A-Za-z]{15})",
         r"\b(\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1})\b",
     ])
 
-    # ── Total Amount ──────────────────────────────────────────────────────────
     amount_str = find([
         r"(?:grand\s*total|total\s*amount|amount\s*payable)\s*:\s*(?:₹|Rs\.?|INR|\$)?\s*([\d,]+\.?\d{0,2})",
         r"(?:net\s*amount|total)\s*:\s*(?:₹|Rs\.?|INR|\$)?\s*([\d,]+\.?\d{0,2})",
         r"[₹$]\s*([\d,]+\.\d{2})",
     ])
 
-    # ── Due Amount ────────────────────────────────────────────────────────────
     due_amount_str = find([
         r"(?:amount\s*due|balance\s*due|due\s*amount)\s*:\s*(?:₹|Rs\.?|INR|\$)?\s*([\d,]+\.?\d{0,2})",
     ])
@@ -87,7 +81,6 @@ def extract_from_pdf(path: Path) -> dict:
     except ValueError:
         due_amount = None
 
-    # ── Currency ──────────────────────────────────────────────────────────────
     currency = "INR"
     if re.search(r"₹|INR|Rs\.", text):
         currency = "INR"

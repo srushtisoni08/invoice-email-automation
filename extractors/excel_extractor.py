@@ -1,32 +1,7 @@
-"""
-excel_extractor.py
-------------------
-Handles TWO Excel invoice layouts:
-
-  1. TABLE layout  — row 1 = headers, rows 2-N = data (one invoice per row)
-     Example:
-       Vendor Name | Invoice Number | Invoice Date | ...
-       TechNova    | INV-001        | 2026-03-11   | ...
-       DataEdge    | INV-002        | 2026-03-12   | ...
-
-  2. FORM layout   — label in col A, value in col B (or value below label)
-     Example:
-       Vendor Name  | TechNova Solutions
-       Invoice No   | INV-001
-       Invoice Date | 2026-03-11
-
-Returns a LIST of dicts (one per invoice row found).
-For backward compatibility, extract_from_excel() still returns a single dict
-(the first invoice) — use extract_all_from_excel() to get all rows.
-"""
-
 import re
 import pandas as pd
 from pathlib import Path
 from datetime import datetime, date as date_type
-
-
-# ─────────────────────────── helpers ──────────────────────────────────────────
 
 def _fmt_date(val) -> str:
     """Convert any cell value to DD-MM-YYYY string, or '' if not date-like."""
@@ -58,7 +33,6 @@ def _fmt_date(val) -> str:
 
 
 def _fmt_amount(val):
-    """Return float or None."""
     if val is None or (isinstance(val, float) and pd.isna(val)):
         return None
     if isinstance(val, (int, float)):
@@ -82,9 +56,6 @@ def _detect_currency(df: pd.DataFrame) -> str:
     if re.search(r"£|GBP", text):       return "GBP"
     return "INR"
 
-
-# ─────────────── column-name → field mapping (TABLE layout) ───────────────────
-
 _COL_MAP = {
     "vendor_name":    re.compile(r"vendor|supplier|seller|company\s*name|billed\s*by", re.I),
     "client_name":    re.compile(r"client|customer|bill(?:ed)?\s*to|buyer", re.I),
@@ -101,7 +72,6 @@ _AMOUNT_FIELDS = {"total_amount", "due_amount"}
 
 
 def _map_columns(columns) -> dict:
-    """Return {field: col_index} for every header that matches a known field."""
     mapping = {}
     for idx, col in enumerate(columns):
         col_str = str(col).strip()
@@ -113,9 +83,7 @@ def _map_columns(columns) -> dict:
 
 
 def _is_table_layout(df: pd.DataFrame) -> bool:
-    """
-    True when row 0 looks like a header row (≥3 cells match known field patterns).
-    """
+
     if df.shape[0] < 2:
         return False
     header_row = df.iloc[0]
@@ -172,8 +140,6 @@ def _extract_table(df: pd.DataFrame, currency: str) -> list[dict]:
 
     return records
 
-
-# ─────────────── FORM layout extractor (original logic) ───────────────────────
 
 def _looks_like_label(v) -> bool:
     if _is_empty(v) or isinstance(v, (int, float, datetime, date_type)):
@@ -294,8 +260,6 @@ def _regex_fallback(text: str, rec: dict) -> dict:
         rec["due_amount"] = _fmt_amount(raw) if raw else None
     return rec
 
-
-# ─────────────── public API ───────────────────────────────────────────────────
 
 def extract_all_from_excel(path: Path) -> list[dict]:
     """
