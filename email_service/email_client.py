@@ -67,7 +67,6 @@ def check_emails():
                     if path.suffix == ".pdf":
                         attachment_data = extract_from_pdf(path)
 
-                        # FIX 1 merge (body → attachment) for PDF
                         if body_text.strip():
                             body_data = extract_from_body(body_text)
                             for key, val in body_data.items():
@@ -96,9 +95,6 @@ def check_emails():
 
                         print(f"[Done] {len(all_records)} invoice(s) saved from: {path.name}")
 
-            # FIX 2: Only fall back to body-only extraction when truly no
-            # supported attachment was found (original logic was correct here,
-            # but now body_text is also used for merging above).
             if not found_attachment:
                 if body_text.strip():
                     data = extract_from_body(body_text)
