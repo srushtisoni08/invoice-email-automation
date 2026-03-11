@@ -9,8 +9,6 @@ def extract_from_pdf(path: Path) -> dict:
         for page in pdf.pages:
             text += page.extract_text() or ""
 
-    print("DEBUG TEXT:\n", text[:1000])
-
     def find(patterns, default=""):
         for pat in patterns:
             m = re.search(pat, text, re.IGNORECASE | re.MULTILINE)
